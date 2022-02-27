@@ -1,15 +1,20 @@
 import React from 'react';
 
-import { BrowserRouter, Switch, Route } from 'react-router-dom';
-import { HomePage } from './pages/Home';
-import { PageTwo } from './pages/Page2';
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Layout from './pages/Layout';
+import Competition from './pages/Competition';
+import history from './lib/history';
+import AuthProvider from './providers/AuthProvider'
 
 const App = () => (
-  <BrowserRouter>
-    <Switch>
-      <Route path="/" exact component={HomePage} />
-      <Route path="/page2" exact component={PageTwo} />
-    </Switch>
+  <BrowserRouter history={history}>
+    <AuthProvider>
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route path="/Competition" element={<Competition />} />
+        </Route>
+      </Routes>
+    </AuthProvider>
   </BrowserRouter>
 );
 

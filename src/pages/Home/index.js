@@ -1,36 +1,17 @@
-import logo from '../../logo.svg';
-import './style.css';
-import { Link } from 'react-router-dom';
+import React from 'react';
+import { useAuth } from '../../providers/AuthProvider';
+import CompetitionList from './CompetitionList';
 
-export function HomePage() {
+export default function Home() {
+  const { signedIn } = useAuth();
+
+  if (signedIn()) {
+    return <CompetitionList />
+  }
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-
-      <div className="App-line"></div>
-      
-      <main className="App-main">
-        <p>
-          Page 1
-        </p>
-
-        <Link to="/page2" className="App-link">
-          Next Page
-        </Link>
-      </main>
+    <div>
+      Sign in to view competitions!
     </div>
   );
 }
