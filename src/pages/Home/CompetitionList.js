@@ -1,60 +1,74 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { 
-  getUpcomingManageableCompetitions,
-  getPastManageableCompetitions,
-} from '../lib/wcaAPI.js'
+import useWCAFetch from '../../hooks/useWCAFetch';
 
 const CompetitionLink = ({ comp, ...props }) => (
-  <li component={Link} to={`/competitions/${comp.id}`}>
-    {comp.name} ({new Date(comp.start_date).toLocaleDateString('en-US', { 
+  <li>
+    <Link to={`/competitions/${comp.id}`}>
+      {comp.name} ({new Date(comp.start_date).toLocaleDateString('en-US', { 
         year: 'numeric',
         month: 'long',
         day: 'numeric',
       })})
+    </Link>
   </li>
-)
+);
 
-const CompetitionList = () => {
+export default function CompetitionList() {
+  const wcaApiFetch = useWCAFetch();
   const [upcomingCompetitions, setUpcomingCompetitions] = useState([]);
   const [pastCompetitions, setPastCompetitions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
+    
+  const getUpcomingManageableCompetitions = useCallback(() => {
+    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const params = new URLSearchParams({
+      managed_by_me: true,
+      start: oneWeekAgo.toISOString(),
+    });
+    return wcaApiFetch(`/competitions?${params.toString()}`);
+  }, [wcaApiFetch]);
+    
+  const getPastManageableCompetitions = useCallback(() => {
+    const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const params = new URLSearchParams({
+      managed_by_me: true,
+      end: oneWeekAgo.toISOString(),
+    });
+    return wcaApiFetch(`/competitions?${params.toString()}`);
+  }, [wcaApiFetch]);
+  
   useEffect(() => {
     getUpcomingManageableCompetitions()
-      .then(competitions => {
-        setUpcomingCompetitions(
-          sortBy(competitions, competition => competition['start_date'])
-        );
+      .then((competitions) => {
+        setUpcomingCompetitions(competitions.sort((a,b) => a.start_date - b.start_date));
       })
       .catch(error => setError(error.message))
       .finally(() => setLoading(false));
 
       getPastManageableCompetitions()
-        .then(competitions => {
-          setPastCompetitions(
-            sortBy(competitions, competition => -competition['start_date'])
-          );
+        .then((competitions) => {
+          setPastCompetitions(competitions.sort((a,b) => a.start_date - b.start_date));
         })
         .catch(error => setError(error.message))
         .finally(() => setLoading(false));
-  }, []);
+  }, [getUpcomingManageableCompetitions, getPastManageableCompetitions]);
 
   return (
     <div>
-      <Typography variant="h4">My Competitions</Typography>
+      <h2>My Competitions</h2>
 
       <div>
-        <div inset disableSticky color="primary">Upcoming Competitions</div>
+        <h3>Upcoming Competitions</h3>
 
         {upcomingCompetitions.map((comp) =>
           <CompetitionLink key={comp.id} comp={comp}/>
         )}
 
-        <Divider/>
+        <hr />
 
-        <div inset disableSticky color="primary">Past Competitions</div>
+        <h3>Past Competitions</h3>
 
         {pastCompetitions.map((comp) => 
           <CompetitionLink key={comp.id} comp={comp}/>
@@ -63,5 +77,3 @@ const CompetitionList = () => {
     </div>
   );
 };
-
-export default CompetitionList;

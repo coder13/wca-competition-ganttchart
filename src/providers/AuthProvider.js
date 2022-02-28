@@ -1,9 +1,7 @@
 import { useState, useEffect, createContext, useContext, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
+import { WCA_ORIGIN, WCA_OAUTH_CLIENT_ID } from '../lib/wca-env';
 import history from '../lib/history';
-
-const WCA_ORIGIN = process.env.REACT_APP_WCA_ORIGIN || 'https://staging.worldcubeassociation.org';
-const WCA_OAUTH_CLIENT_ID = process.env.REACT_APP_WCA_CLIENT_ID || 'example-application-id';
 
 const localStorageKey = key => `groups.${WCA_OAUTH_CLIENT_ID}.${key}`;
 
@@ -24,10 +22,11 @@ const AuthContext = createContext(null);
 
 export default function AuthProvider({ children }) {
   const [accessToken, setAccessToken] = useState(getLocalStorage('accessToken'));
-  const [user, setUser] = useState(null);
   const location = useLocation();
 
-  useEffect(() => setLocalStorage('accessToken', accessToken), [accessToken]);
+  useEffect(() => {
+    setLocalStorage('accessToken', accessToken);
+  }, [accessToken]);
 
   useEffect(() => {
     console.log(27, location);
@@ -77,7 +76,7 @@ export default function AuthProvider({ children }) {
 
   const signedIn = useCallback(() => !!accessToken, [accessToken]);
 
-  const value = { user, signIn, signOut, signedIn };
+  const value = { accessToken, signIn, signOut, signedIn };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
