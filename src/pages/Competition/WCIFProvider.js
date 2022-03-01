@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useReducer } from 'react';
+import { createContext, useContext, useState, useEffect, useReducer, useCallback } from 'react';
 import useWCAFetch from '../../hooks/useWCAFetch';
 
 const INITIAL_STATE = {
@@ -31,6 +31,14 @@ function WCIFReducer(state, { type, payload }) {
           }]),
         }) : person),
       }
+    case 'DELETE_ASSIGNMENT':
+      return {
+        ...state,
+        persons: state.persons.map((person) => person.registrantId === payload.registrantId ? ({
+          ...person,
+          assignments: person.assignments.filter(({ activityId }) => activityId !== payload.activityId),
+        }) : person),
+      }
     default: {
       throw new Error(`Unhandled action type ${type}`);
     }
@@ -43,24 +51,42 @@ export default function WCIFProvider({ competitionId, children }) {
   const [ fetching, setFetching ] = useState(true);
   const wcaApiFetch = useWCAFetch();
 
-  useEffect(() => {
-    wcaApiFetch(`/competitions/${competitionId}/wcif`)
-      .then((data) => {
-        dispatch({
-          type: 'SET',
-          payload: data,
-        });
-        setFetching(false);
-      })
-      .catch((error) => {
-        console.error(error);
-        setError(error);
-        setFetching(false);
+  const fetchCompetition = useCallback(async () => {
+    setFetching(true);
+    try {
+      const data = await wcaApiFetch(`/competitions/${competitionId}/wcif`)
+      dispatch({
+        type: 'SET',
+        payload: data,
       });
+      setFetching(false);
+    } catch (e) {
+      console.error(e);
+      setError(e);
+      setFetching(false);
+    }
   }, [competitionId, wcaApiFetch]);
 
+  const uploadChanges = useCallback(async () => {
+    try {
+      const res = wcaApiFetch(`/competitions/${competitionId}/wcif`, {
+        method: 'PATCH',
+        body: JSON.stringify(wcif),
+      });
+      console.log(res);
+    } catch (e) {
+      console.error(e);
+      setError(e);
+      setFetching(false);
+    }    
+  }, [competitionId, wcif, wcaApiFetch]);
+
+  useEffect(() => {
+    fetchCompetition();
+  }, [fetchCompetition]);
+
   console.log(50, fetching, error, wcif);
-  return <WCIFContext.Provider value={{ wcif, error, dispatch }}>{(fetching && !error) ? 'Loading...' : children}</WCIFContext.Provider>
+  return <WCIFContext.Provider value={{ wcif, fetchCompetition, uploadChanges, error, dispatch }}>{(fetching && !error) ? 'Loading...' : children}</WCIFContext.Provider>
 }
 
 export const useWCIF = () => useContext(WCIFContext);

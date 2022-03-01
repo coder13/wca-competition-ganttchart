@@ -6,18 +6,25 @@ import Footer from './Footer';
 
 const RootDiv = styled('div')({
   display: 'flex',
-  minHeight: '100vh',
   flexDirection: 'column',
   flexGrow: 1,
+  minHeight: '100vh',
+});
+
+const Main = styled('div')({
+  display: 'flex',
+  flexDirection: 'column',
+  flexGrow: 1,
+  height: '90vh',
 });
 
 export default function Layout() {
   return (
     <RootDiv>
-      <Header />
-      <main>
+      <Header/>
+      <Main>
         <Outlet />
-      </main>
+      </Main>
       {/* <Footer/> */}
     </RootDiv>
   );
