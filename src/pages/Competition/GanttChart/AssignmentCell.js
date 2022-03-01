@@ -2,12 +2,14 @@ import styled from 'styled-components'
 import { parseActivityCode } from '../../../lib/utils';
 
 const TD = styled.td`
+  border-collapse: separate;
   padding: 0.25em;
   text-align: center;
   background-color: ${(props) => props.backgroundColor || 'white'};
-
+  border: 1px solid ${(props) => props.backgroundColor || 'white'};
+  
   &:hover {
-    background-color: #cfcfcf;
+    border: 1px solid #7f7f7f;
   }
 `;
 

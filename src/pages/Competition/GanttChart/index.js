@@ -50,7 +50,6 @@ export default function GanttChart({ wcif, dispatch }) {
   const events = firstRoundActivities.map((activity) => activity.activityCode.split('-')[0]).filter(unique);
 
   const handleAssignmentChange = (person, activity) => {
-    console.log(person, activity)
     dispatch({
       type: 'SET_ASSIGNMENT',
       payload: {
@@ -62,7 +61,7 @@ export default function GanttChart({ wcif, dispatch }) {
   }
 
   return (
-    <table style={{ borderCollapse: 'collapse', fontSize: '12px' }}>
+    <table style={{ boxSizing: 'border-box', fontSize: '12px' }} cellspacing="0">
       <thead>
         <tr>
           <th></th>
@@ -73,7 +72,6 @@ export default function GanttChart({ wcif, dispatch }) {
               style={{
                 height: '1em',
                 padding: 0,
-                borderCollapse: 'collapse',
               }}
             >
               <button
@@ -84,7 +82,6 @@ export default function GanttChart({ wcif, dispatch }) {
                   height: '100%',
                   justifyContent: 'center',
                   backgroundColor: eventId === sortActivityCode && '#D6DBDF',
-                  borderCollapse: 'collapse',
                 }}
                 onClick={() => {
                   if (eventId === sortActivityCode) {
