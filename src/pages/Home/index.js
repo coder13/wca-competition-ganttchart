@@ -4,7 +4,6 @@ import CompetitionList from './CompetitionList';
 
 export default function Home() {
   const { signedIn } = useAuth();
-  console.log(7, signedIn());
 
   if (signedIn()) {
     return <CompetitionList />

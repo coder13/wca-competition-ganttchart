@@ -46,9 +46,9 @@ function WCIFReducer(state, { type, payload }) {
 }
 
 export default function WCIFProvider({ competitionId, children }) {
-  const [ wcif, dispatch ] = useReducer(WCIFReducer, INITIAL_STATE);
-  const [ error, setError ] = useState(null);
-  const [ fetching, setFetching ] = useState(true);
+  const [wcif, dispatch] = useReducer(WCIFReducer, INITIAL_STATE);
+  const [error, setError] = useState(null);
+  const [fetching, setFetching] = useState(true);
   const wcaApiFetch = useWCAFetch();
 
   const fetchCompetition = useCallback(async () => {
@@ -71,21 +71,22 @@ export default function WCIFProvider({ competitionId, children }) {
     try {
       const res = wcaApiFetch(`/competitions/${competitionId}/wcif`, {
         method: 'PATCH',
-        body: JSON.stringify(wcif),
+        body: JSON.stringify({
+          persons: wcif.persons,
+        }),
       });
       console.log(res);
     } catch (e) {
       console.error(e);
       setError(e);
       setFetching(false);
-    }    
+    }
   }, [competitionId, wcif, wcaApiFetch]);
 
   useEffect(() => {
     fetchCompetition();
   }, [fetchCompetition]);
 
-  console.log(50, fetching, error, wcif);
   return <WCIFContext.Provider value={{ wcif, fetchCompetition, uploadChanges, error, dispatch }}>{(fetching && !error) ? 'Loading...' : children}</WCIFContext.Provider>
 }
 

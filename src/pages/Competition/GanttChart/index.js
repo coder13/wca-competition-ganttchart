@@ -16,7 +16,11 @@ const findAssignmentByActivityCode = (assignments, activityCode) => {
   const parsedFilterActivityCode = parseActivityCode(activityCode);
 
   return assignments.find((assignment) => {
-    const parsedActivityCode = parseActivityCode(assignment.activityCode);
+    if (!assignment.parsedActivityCode) {
+      return null;
+    }
+
+    const parsedActivityCode = assignment.parsedActivityCode;
     const groupMatches = parsedFilterActivityCode.group ? parsedActivityCode.group === parsedFilterActivityCode.group : true;
     const roundMatches = parsedFilterActivityCode.roundNumber ? parsedActivityCode.roundNumber === parsedFilterActivityCode.roundNumber : true;
 
@@ -29,7 +33,6 @@ const findAssignmentByActivityCode = (assignments, activityCode) => {
 export default function GanttChart({ wcif, room, dispatch }) {
   const [sortActivityCode, setSortActivityCode] = useState(wcif.events[0].id);
   const [assignmentPickerValue, setAssignmentPickerValue] = useState('competitor');
-  console.log(7, sortActivityCode);
 
   const allChildActivities = useMemo(() =>
     room.activities
@@ -90,7 +93,6 @@ export default function GanttChart({ wcif, room, dispatch }) {
         const aAssignment = findAssignmentByActivityCode(a.assignments.filter(({ assignmentCode }) => assignmentCode === 'competitor'), sortActivityCode);
         const bAssignment = findAssignmentByActivityCode(b.assignments.filter(({ assignmentCode }) => assignmentCode === 'competitor'), sortActivityCode);
 
-        console.log(94, aAssignment, bAssignment);
         const diff = (bAssignment?.parsedActivityCode?.groupNumber || 0) - (aAssignment?.parsedActivityCode?.group || 0);
         return diff
       }
@@ -115,11 +117,8 @@ export default function GanttChart({ wcif, room, dispatch }) {
       //     )
       //   ))?.group || 0;
 
-
-      return 0;
       // return (bGroup - aGroup) === 0 ? byWorldRanking(sortActivityCode)(a,b) : (bGroup - aGroup);
-    })
-    , [wcif.persons, sortActivityCode, firstRoundActivities]);
+    }), [wcif.persons, sortActivityCode, allChildActivities]);
 
   const events = firstRoundActivities.map((activity) => activity.activityCode.split('-')[0]).filter(unique);
 
