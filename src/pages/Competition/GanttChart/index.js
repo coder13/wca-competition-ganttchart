@@ -5,54 +5,121 @@ import AssignmentCell from './AssignmentCell';
 import AssignmentPicker from './AssignmentPicker';
 import { Container, Item } from '../../../components/Grid';
 
+const AssignmentTypeSortOrder = {
+  'staff-scrambler': 4,
+  'staff-runner': 3,
+  'staff-judge': 2,
+  'competitor': 1,
+};
+
+const findAssignmentByActivityCode = (assignments, activityCode) => {
+  const parsedFilterActivityCode = parseActivityCode(activityCode);
+
+  return assignments.find((assignment) => {
+    const parsedActivityCode = parseActivityCode(assignment.activityCode);
+    const groupMatches = parsedFilterActivityCode.group ? parsedActivityCode.group === parsedFilterActivityCode.group : true;
+    const roundMatches = parsedFilterActivityCode.roundNumber ? parsedActivityCode.roundNumber === parsedFilterActivityCode.roundNumber : true;
+
+    const eventIdMatches = parsedActivityCode.eventId === parsedFilterActivityCode.eventId;
+
+    return groupMatches && roundMatches && eventIdMatches;
+  });
+}
+
 export default function GanttChart({ wcif, room, dispatch }) {
-  const [ sortActivityCode, setSortActivityCode ] = useState(wcif.events[0].id);
-  const [ assignmentPickerValue, setAssignmentPickerValue ] = useState('competitor');
+  const [sortActivityCode, setSortActivityCode] = useState(wcif.events[0].id);
+  const [assignmentPickerValue, setAssignmentPickerValue] = useState('competitor');
   console.log(7, sortActivityCode);
+
+  const allChildActivities = useMemo(() =>
+    room.activities
+      .sort(sortByDate)
+      .map((activity) => activity.childActivities)
+      .reduce((acc, activity) => acc.concat(activity))
+    , [room]);
+
   const firstRoundActivities = useMemo(() =>
     room.activities
       .sort(sortByDate)
       .filter(({ activityCode }) => parseActivityCode(activityCode).roundNumber === 1)
       .map((activity) => activity.childActivities)
       .reduce((acc, activity) => acc.concat(activity))
-  , [room]);
+    , [room]);
 
   const persons = useMemo(() => wcif.persons
-    .sort((a,b) => a.registrantId - b.registrantId)
+    .sort((a, b) => a.registrantId - b.registrantId)
     .filter(acceptedRegistration)
-    .filter((person) => sortActivityCode ? person.registration.eventIds.indexOf(parseActivityCode(sortActivityCode).eventId) > -1 : true)
-    .sort((a,b) => a.name.localeCompare(b.name))
+    .map((person) => ({ // Speeds up code by pre-fetching person's assignments
+      ...person,
+      assignments: person.assignments.map((assignment) => {
+        const activity = allChildActivities.find(({ id }) => id === assignment.activityId);
+
+        return {
+          ...assignment,
+          ...activity,
+          parsedActivityCode: activity ? parseActivityCode(activity.activityCode) : null,
+        }
+      }),
+    }))
+    .filter((person) => { // filter people out by activity code
+      if (!sortActivityCode) {
+        return true;
+      }
+
+      return !!findAssignmentByActivityCode(person.assignments, sortActivityCode)
+    })
+    .sort((a, b) => a.name.localeCompare(b.name))
     // .sort(byWorldRanking(sortActivityCode))
-    .sort((a,b) => {
+    .sort((a, b) => {
       if (!sortActivityCode) {
         return 1;
       }
 
-      const aGroup = a.assignments
-        .filter(({ assignmentCode }) => assignmentCode === 'competitor')
-        .map(({ activityId }) => firstRoundActivities.find(({ id }) => id === activityId))
-        .filter((i) => !!i)
-        .map(({ activityCode }) => parseActivityCode(activityCode))
-        .find(({ eventId, group }) => (
-          eventId === parseActivityCode(sortActivityCode).eventId && (
-            parseActivityCode(sortActivityCode).group ? parseActivityCode(sortActivityCode).group === group : true
-          )
-        ))?.group || 0;
+      const parsedSortActivityCode = parseActivityCode(sortActivityCode);
 
-      const bGroup = b.assignments
-        .filter(({ assignmentCode }) => assignmentCode === 'competitor')
-        .map(({ activityId }) => firstRoundActivities.find(({ id }) => id === activityId))
-        .filter((i) => !!i)
-        .map(({ activityCode }) => parseActivityCode(activityCode))
-        .find(({ eventId, group }) => (
-          eventId === parseActivityCode(sortActivityCode).eventId && (
-            parseActivityCode(sortActivityCode).group ? parseActivityCode(sortActivityCode).group === group : true
-          )
-        ))?.group || 0;
+      // sort by staff assignment type
+      if (parsedSortActivityCode.group) {
+        // Sort by job type for that specific group
+        const aAssignment = findAssignmentByActivityCode(a.assignments, sortActivityCode);
+        const bAssignment = findAssignmentByActivityCode(b.assignments, sortActivityCode);
 
-      return (bGroup - aGroup) === 0 ? byWorldRanking(sortActivityCode)(a,b) : (bGroup - aGroup);
+        const diff = AssignmentTypeSortOrder[bAssignment.assignmentCode] - AssignmentTypeSortOrder[aAssignment.assignmentCode];
+        return diff;
+      } else {
+        // sort by which group they are competing in
+        const aAssignment = findAssignmentByActivityCode(a.assignments.filter(({ assignmentCode }) => assignmentCode === 'competitor'), sortActivityCode);
+        const bAssignment = findAssignmentByActivityCode(b.assignments.filter(({ assignmentCode }) => assignmentCode === 'competitor'), sortActivityCode);
+
+        console.log(94, aAssignment, bAssignment);
+        const diff = (bAssignment?.parsedActivityCode?.groupNumber || 0) - (aAssignment?.parsedActivityCode?.group || 0);
+        return diff
+      }
+
+      // const aGroup = a.assignments
+      //   .map(({ activityId }) => firstRoundActivities.find(({ id }) => id === activityId))
+      //   .filter((i) => !!i)
+      //   .map(({ activityCode }) => parseActivityCode(activityCode))
+      //   .find(({ eventId, group }) => (
+      //     eventId === parseActivityCode(sortActivityCode).eventId && (
+      //       parseActivityCode(sortActivityCode).group ? parseActivityCode(sortActivityCode).group === group : true
+      //     )
+      //   ))?.group || 0;
+
+      // const bGroup = b.assignments
+      //   .map(({ activityId }) => firstRoundActivities.find(({ id }) => id === activityId))
+      //   .filter((i) => !!i)
+      //   .map(({ activityCode }) => parseActivityCode(activityCode))
+      //   .find(({ eventId, group }) => (
+      //     eventId === parseActivityCode(sortActivityCode).eventId && (
+      //       parseActivityCode(sortActivityCode).group ? parseActivityCode(sortActivityCode).group === group : true
+      //     )
+      //   ))?.group || 0;
+
+
+      return 0;
+      // return (bGroup - aGroup) === 0 ? byWorldRanking(sortActivityCode)(a,b) : (bGroup - aGroup);
     })
-  , [wcif.persons, sortActivityCode, firstRoundActivities]);
+    , [wcif.persons, sortActivityCode, firstRoundActivities]);
 
   const events = firstRoundActivities.map((activity) => activity.activityCode.split('-')[0]).filter(unique);
 
@@ -183,7 +250,7 @@ export default function GanttChart({ wcif, room, dispatch }) {
                 <td
                   style={{
                     textAlign: 'right',
-                    width: '16em', 
+                    width: '16em',
                     height: '2em',
                     paddingRight: '1em',
                   }}

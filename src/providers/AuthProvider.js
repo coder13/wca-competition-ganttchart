@@ -1,7 +1,6 @@
 import { useState, useEffect, createContext, useContext, useCallback } from 'react';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { WCA_ORIGIN, WCA_OAUTH_CLIENT_ID } from '../lib/wca-env';
-import history from '../lib/history';
 
 const localStorageKey = key => `wca_gantt_chart.${WCA_OAUTH_CLIENT_ID}.${key}`;
 
@@ -25,6 +24,7 @@ export default function AuthProvider({ children }) {
   const [expirationTime, setExpirationTime] = useState(getLocalStorage('expirationTime')); // Time at which it expires
 
   const location = useLocation();
+  const navigate = useNavigate();
 
   const signOutIfExpired = useCallback(() => {
     if (expirationTime && new Date() >= new Date(expirationTime)) {
@@ -93,7 +93,13 @@ export default function AuthProvider({ children }) {
 
     /* Clear the hash if there is a token. */
     if (hashParams.has('access_token')) {
-      history.replace({ ...history.location, hash: null });
+      navigate({
+        to: {
+          replace: '/',
+          hash: null,
+          state: location.state,
+        },
+      })
     }
   }, [location]);
 

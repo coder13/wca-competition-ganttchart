@@ -1,15 +1,15 @@
 import React from 'react';
 
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { Routes, Route } from 'react-router-dom';
 import Layout from './pages/Layout';
 import Competition from './pages/Competition';
 import CompetitionHome from './pages/Competition/Home';
 import Home from './pages/Home';
-import history from './lib/history';
-import AuthProvider from './providers/AuthProvider'
+import AuthProvider from './providers/AuthProvider';
+import QueryParamPreservingRouter from './components/QueryParamPreservingRouter';
 
 const App = () => (
-  <BrowserRouter history={history}>
+  <QueryParamPreservingRouter>
     <AuthProvider>
       <Routes>
         <Route path="/" element={<Layout />}>
@@ -20,7 +20,7 @@ const App = () => (
         </Route>
       </Routes>
     </AuthProvider>
-  </BrowserRouter>
+  </QueryParamPreservingRouter>
 );
 
 export default App;
