@@ -72,7 +72,6 @@ export default function GanttChart({ wcif, room, dispatch }) {
       return !!findAssignmentByActivityCode(person.assignments, sortActivityCode)
     })
     .sort((a, b) => a.name.localeCompare(b.name))
-    // .sort(byWorldRanking(sortActivityCode))
     .sort((a, b) => {
       if (!sortActivityCode) {
         return 1;
@@ -92,32 +91,11 @@ export default function GanttChart({ wcif, room, dispatch }) {
         // sort by which group they are competing in
         const aAssignment = findAssignmentByActivityCode(a.assignments.filter(({ assignmentCode }) => assignmentCode === 'competitor'), sortActivityCode);
         const bAssignment = findAssignmentByActivityCode(b.assignments.filter(({ assignmentCode }) => assignmentCode === 'competitor'), sortActivityCode);
+        
+        const diff = (aAssignment?.parsedActivityCode?.group || 0) - (bAssignment?.parsedActivityCode?.group || 0);
 
-        const diff = (bAssignment?.parsedActivityCode?.groupNumber || 0) - (aAssignment?.parsedActivityCode?.group || 0);
         return diff
       }
-
-      // const aGroup = a.assignments
-      //   .map(({ activityId }) => firstRoundActivities.find(({ id }) => id === activityId))
-      //   .filter((i) => !!i)
-      //   .map(({ activityCode }) => parseActivityCode(activityCode))
-      //   .find(({ eventId, group }) => (
-      //     eventId === parseActivityCode(sortActivityCode).eventId && (
-      //       parseActivityCode(sortActivityCode).group ? parseActivityCode(sortActivityCode).group === group : true
-      //     )
-      //   ))?.group || 0;
-
-      // const bGroup = b.assignments
-      //   .map(({ activityId }) => firstRoundActivities.find(({ id }) => id === activityId))
-      //   .filter((i) => !!i)
-      //   .map(({ activityCode }) => parseActivityCode(activityCode))
-      //   .find(({ eventId, group }) => (
-      //     eventId === parseActivityCode(sortActivityCode).eventId && (
-      //       parseActivityCode(sortActivityCode).group ? parseActivityCode(sortActivityCode).group === group : true
-      //     )
-      //   ))?.group || 0;
-
-      // return (bGroup - aGroup) === 0 ? byWorldRanking(sortActivityCode)(a,b) : (bGroup - aGroup);
     }), [wcif.persons, sortActivityCode, allChildActivities]);
 
   const events = firstRoundActivities.map((activity) => activity.activityCode.split('-')[0]).filter(unique);
