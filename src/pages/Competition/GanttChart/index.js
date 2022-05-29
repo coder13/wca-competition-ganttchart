@@ -1,16 +1,22 @@
-import styled from 'styled-components'
-import React, { useState, useMemo } from 'react';
-import { acceptedRegistration, sortByDate, byWorldRanking, unique, parseActivityCode } from '../../../lib/utils';
-import AssignmentCell from './AssignmentCell';
-import AssignmentPicker from './AssignmentPicker';
-import { Container, Item } from '../../../components/Grid';
+import React, { useState, useMemo } from "react";
+import {
+  acceptedRegistration,
+  sortByDate,
+  unique,
+  parseActivityCode,
+} from "../../../lib/utils";
+import AssignmentCell from "./AssignmentCell";
+import AssignmentPicker from "./AssignmentPicker";
+import { Container, Item } from "../../../components/Grid";
 
 const AssignmentTypeSortOrder = {
-  'staff-scrambler': 4,
-  'staff-runner': 3,
-  'staff-judge': 2,
-  'competitor': 1,
+  competitor: 1,
+  "staff-scrambler": 2,
+  "staff-judge": 3,
+  "staff-runner": 4,
 };
+
+export const flatten = (arr) => arr.reduce((xs, x) => xs.concat(x), []);
 
 const findAssignmentByActivityCode = (assignments, activityCode) => {
   const parsedFilterActivityCode = parseActivityCode(activityCode);
@@ -21,91 +27,145 @@ const findAssignmentByActivityCode = (assignments, activityCode) => {
     }
 
     const parsedActivityCode = assignment.parsedActivityCode;
-    const groupMatches = parsedFilterActivityCode.group ? parsedActivityCode.group === parsedFilterActivityCode.group : true;
-    const roundMatches = parsedFilterActivityCode.roundNumber ? parsedActivityCode.roundNumber === parsedFilterActivityCode.roundNumber : true;
+    const groupMatches = parsedFilterActivityCode.group
+      ? parsedActivityCode.group === parsedFilterActivityCode.group
+      : true;
+    const roundMatches = parsedFilterActivityCode.roundNumber
+      ? parsedActivityCode.roundNumber === parsedFilterActivityCode.roundNumber
+      : true;
 
-    const eventIdMatches = parsedActivityCode.eventId === parsedFilterActivityCode.eventId;
+    const eventIdMatches =
+      parsedActivityCode.eventId === parsedFilterActivityCode.eventId;
 
     return groupMatches && roundMatches && eventIdMatches;
   });
-}
+};
 
 export default function GanttChart({ wcif, room, dispatch }) {
   const [sortActivityCode, setSortActivityCode] = useState(wcif.events[0].id);
-  const [assignmentPickerValue, setAssignmentPickerValue] = useState('competitor');
+  const [assignmentPickerValue, setAssignmentPickerValue] =
+    useState("competitor");
 
-  const allChildActivities = useMemo(() =>
-    room.activities
-      .sort(sortByDate)
-      .map((activity) => activity.childActivities)
-      .reduce((acc, activity) => acc.concat(activity))
-    , [room]);
+  const roundActivities = useMemo(
+    () =>
+      room.activities.filter(
+        ({ activityCode }) => activityCode.indexOf("other") === -1
+      ),
+    [room.activities]
+  );
 
-  const firstRoundActivities = useMemo(() =>
-    room.activities
-      .sort(sortByDate)
-      .filter(({ activityCode }) => parseActivityCode(activityCode).roundNumber === 1)
-      .map((activity) => activity.childActivities)
-      .reduce((acc, activity) => acc.concat(activity))
-    , [room]);
+  const allChildActivities = useMemo(
+    () =>
+      room.activities
+        .sort(sortByDate)
+        .map((activity) => activity.childActivities)
+        .reduce((acc, activity) => acc.concat(activity)),
+    [room]
+  );
 
-  const persons = useMemo(() => wcif.persons
-    .sort((a, b) => a.registrantId - b.registrantId)
-    .filter(acceptedRegistration)
-    .map((person) => ({ // Speeds up code by pre-fetching person's assignments
-      ...person,
-      assignments: person.assignments.map((assignment) => {
-        const activity = allChildActivities.find(({ id }) => id === assignment.activityId);
+  const firstRoundGroupActivities = useMemo(
+    () =>
+      roundActivities
+        .sort(sortByDate)
+        .filter(
+          ({ activityCode }) =>
+            parseActivityCode(activityCode).roundNumber === 1
+        )
+        .map((activity) => activity.childActivities)
+        .reduce((acc, activity) => acc.concat(activity)),
+    [roundActivities]
+  );
 
-        return {
-          ...assignment,
-          ...activity,
-          parsedActivityCode: activity ? parseActivityCode(activity.activityCode) : null,
-        }
-      }),
-    }))
-    .filter((person) => { // filter people out by activity code
-      if (!sortActivityCode) {
-        return true;
-      }
+  const persons = useMemo(
+    () =>
+      wcif.persons
+        .sort((a, b) => a.registrantId - b.registrantId)
+        .filter(acceptedRegistration)
+        .map((person) => ({
+          // Speeds up code by pre-fetching person's assignments
+          ...person,
+          assignments: person.assignments.map((assignment) => {
+            const activity = allChildActivities.find(
+              ({ id }) => id === assignment.activityId
+            );
 
-      return !!findAssignmentByActivityCode(person.assignments, sortActivityCode)
-    })
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .sort((a, b) => {
-      if (!sortActivityCode) {
-        return 1;
-      }
+            return {
+              ...assignment,
+              ...activity,
+              parsedActivityCode: activity
+                ? parseActivityCode(activity.activityCode)
+                : null,
+            };
+          }),
+        }))
+        .filter((person) => {
+          // filter people out by activity code
+          if (!sortActivityCode) {
+            return true;
+          }
 
-      const parsedSortActivityCode = parseActivityCode(sortActivityCode);
+          return !!findAssignmentByActivityCode(
+            person.assignments,
+            sortActivityCode
+          );
+        })
+        .sort((a, b) => a.name.localeCompare(b.name))
+        .sort((a, b) => {
+          if (!sortActivityCode) {
+            return 1;
+          }
 
-      // sort by staff assignment type
-      if (parsedSortActivityCode.group) {
-        // Sort by job type for that specific group
-        const aAssignment = findAssignmentByActivityCode(a.assignments, sortActivityCode);
-        const bAssignment = findAssignmentByActivityCode(b.assignments, sortActivityCode);
+          const parsedSortActivityCode = parseActivityCode(sortActivityCode);
 
-        const diff = AssignmentTypeSortOrder[bAssignment.assignmentCode] - AssignmentTypeSortOrder[aAssignment.assignmentCode];
-        return diff;
-      } else {
-        // sort by which group they are competing in
-        const aAssignment = findAssignmentByActivityCode(a.assignments.filter(({ assignmentCode }) => assignmentCode === 'competitor'), sortActivityCode);
-        const bAssignment = findAssignmentByActivityCode(b.assignments.filter(({ assignmentCode }) => assignmentCode === 'competitor'), sortActivityCode);
-        
-        const diff = (aAssignment?.parsedActivityCode?.group || 0) - (bAssignment?.parsedActivityCode?.group || 0);
+          // sort by staff assignment type
+          if (parsedSortActivityCode.group) {
+            // Sort by job type for that specific group
+            const aAssignment = findAssignmentByActivityCode(
+              a.assignments,
+              sortActivityCode
+            );
+            const bAssignment = findAssignmentByActivityCode(
+              b.assignments,
+              sortActivityCode
+            );
 
-        return diff
-      }
-    }), [wcif.persons, sortActivityCode, allChildActivities]);
+            const diff =
+              AssignmentTypeSortOrder[aAssignment.assignmentCode] -
+              AssignmentTypeSortOrder[bAssignment.assignmentCode];
+            return diff;
+          } else {
+            // sort by which group they are competing in
+            const aAssignment = findAssignmentByActivityCode(
+              a.assignments.filter(
+                ({ assignmentCode }) => assignmentCode === "competitor"
+              ),
+              sortActivityCode
+            );
+            const bAssignment = findAssignmentByActivityCode(
+              b.assignments.filter(
+                ({ assignmentCode }) => assignmentCode === "competitor"
+              ),
+              sortActivityCode
+            );
 
-  const events = firstRoundActivities.map((activity) => activity.activityCode.split('-')[0]).filter(unique);
+            const diff =
+              (aAssignment?.parsedActivityCode?.group || 0) -
+              (bAssignment?.parsedActivityCode?.group || 0);
+
+            return diff;
+          }
+        }),
+    [wcif.persons, sortActivityCode, allChildActivities]
+  );
 
   const handleAssignmentChange = (person, activity) => {
-    const currentAssignment = person.assignments.find(({ activityId }) => activityId === activity.id)?.assignmentCode;
+    const currentAssignment = person.assignments.find(
+      ({ activityId }) => activityId === activity.id
+    )?.assignmentCode;
 
     if (currentAssignment === assignmentPickerValue) {
       dispatch({
-        type: 'DELETE_ASSIGNMENT',
+        type: "DELETE_ASSIGNMENT",
         payload: {
           registrantId: person.registrantId,
           activityId: activity.id,
@@ -113,7 +173,7 @@ export default function GanttChart({ wcif, room, dispatch }) {
       });
     } else {
       dispatch({
-        type: 'SET_ASSIGNMENT',
+        type: "SET_ASSIGNMENT",
         payload: {
           registrantId: person.registrantId,
           activityId: activity.id,
@@ -121,70 +181,108 @@ export default function GanttChart({ wcif, room, dispatch }) {
         },
       });
     }
-  }
+  };
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const activitiesToShow = useMemo(() =>
+    roundActivities.filter(({ childActivities }) => childActivities?.length > 0)
+  );
+
+  const groupActivitiesToShow = useMemo(
+    () =>
+      flatten(
+        activitiesToShow.map(({ childActivities }) => childActivities || [])
+      ),
+    [activitiesToShow]
+  );
 
   return (
     <Container>
-      <div style={{ overflowY: 'scroll' }}>
-        <table style={{ boxSizing: 'border-box', fontSize: '12px', tableLayout: 'fixed' }} cellSpacing="0">
-          <thead style={{
-            border: '1px solid black'
-          }}>
+      <div style={{ overflowY: "scroll" }}>
+        <table
+          style={{
+            boxSizing: "border-box",
+            fontSize: "12px",
+            tableLayout: "fixed",
+          }}
+          cellSpacing="0"
+        >
+          <thead
+            style={{
+              border: "1px solid black",
+            }}
+          >
             <tr>
               <th></th>
-              {events.map((eventId) => (
-                <th
-                  key={eventId}
-                  colSpan={firstRoundActivities.filter(({ activityCode }) => activityCode.split('-')[0] === eventId).length}
-                  style={{
-                    height: '1em',
-                    padding: 0,
-                  }}
-                >
-                  <button
+              {activitiesToShow.map((activity) => {
+                const { eventId } = parseActivityCode(activity.activityCode);
+
+                return (
+                  <th
+                    key={activity.activityCode}
+                    colSpan={activity.childActivities?.length}
                     style={{
-                      display: 'flex',
-                      flex: 1,
-                      width: '100%',
-                      height: '100%',
-                      justifyContent: 'center',
-                      backgroundColor: eventId === sortActivityCode && '#D6DBDF',
-                    }}
-                    onClick={() => {
-                      if (eventId === sortActivityCode) {
-                        setSortActivityCode(null);
-                      } else {
-                        setSortActivityCode(eventId);
-                      }
+                      height: "1em",
+                      padding: 0,
                     }}
                   >
-                    {eventId}
-                  </button>
-                </th>
-              ))}
+                    <button
+                      style={{
+                        display: "flex",
+                        flex: 1,
+                        width: "100%",
+                        height: "100%",
+                        justifyContent: "center",
+                        backgroundColor:
+                          activity.activityCode === sortActivityCode &&
+                          "#D6DBDF",
+                      }}
+                      onClick={() => {
+                        if (activity.activityCode === sortActivityCode) {
+                          setSortActivityCode(null);
+                        } else {
+                          setSortActivityCode(activity.activityCode);
+                        }
+                      }}
+                    >
+                      {activity.activityCode}
+                    </button>
+                  </th>
+                );
+              })}
             </tr>
             <tr>
-              <th style={{ textAlign: 'right', width: '16em', height: '1em', paddingRight: '1em', }}>Name</th>
-              {firstRoundActivities.map(({ id, activityCode }) => {
+              <th
+                style={{
+                  textAlign: "right",
+                  width: "16em",
+                  height: "1em",
+                  paddingRight: "1em",
+                }}
+              >
+                Name
+              </th>
+              {groupActivitiesToShow.map(({ id, activityCode }) => {
                 const { group } = parseActivityCode(activityCode);
                 return (
                   <th
                     key={id}
                     style={{
-                      width: '4em',
-                      height: '1em',
+                      width: "4em",
+                      height: "1em",
                       padding: 0,
                       margin: 0,
                     }}
                   >
                     <button
                       style={{
-                        display: 'flex',
+                        display: "flex",
                         flex: 1,
-                        width: '100%',
-                        height: '100%',
-                        justifyContent: 'center',
-                        backgroundColor: activityCode === sortActivityCode && '#D6DBDF',
+                        width: "100%",
+                        height: "100%",
+                        justifyContent: "center",
+                        backgroundColor:
+                          activityCode === sortActivityCode && "#D6DBDF",
                         padding: 0,
                         margin: 0,
                       }}
@@ -204,18 +302,21 @@ export default function GanttChart({ wcif, room, dispatch }) {
             </tr>
             <tr>
               <th>Time</th>
-              {firstRoundActivities.map(({ id, startTime }) => {
+              {groupActivitiesToShow.map(({ id, startTime }) => {
                 return (
                   <th
                     key={id}
                     style={{
-                      width: '4em',
-                      height: '1em',
-                      padding: '0.25em',
+                      width: "4em",
+                      height: "1em",
+                      padding: "0.25em",
                       margin: 0,
                     }}
                   >
-                    {new Date(startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {new Date(startTime).toLocaleTimeString([], {
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    })}
                   </th>
                 );
               })}
@@ -226,15 +327,15 @@ export default function GanttChart({ wcif, room, dispatch }) {
               <tr key={person.registrantId}>
                 <td
                   style={{
-                    textAlign: 'right',
-                    width: '16em',
-                    height: '2em',
-                    paddingRight: '1em',
+                    textAlign: "right",
+                    width: "16em",
+                    height: "2em",
+                    paddingRight: "1em",
                   }}
                 >
                   {person.name}
                 </td>
-                {firstRoundActivities.map((activity) =>
+                {groupActivitiesToShow.map((activity) => (
                   <AssignmentCell
                     key={activity.id}
                     person={person}
@@ -242,13 +343,13 @@ export default function GanttChart({ wcif, room, dispatch }) {
                     sortActivityCode={sortActivityCode}
                     onClick={() => handleAssignmentChange(person, activity)}
                   />
-                )}
+                ))}
               </tr>
             ))}
           </tbody>
         </table>
       </div>
-      <Item column style={{ paddingLeft: '1em', paddingRight: '1em' }}>
+      <Item column style={{ paddingLeft: "1em", paddingRight: "1em" }}>
         <Item column>
           <p>Info Panel</p>
           <p>Chosen Sort Activity Code: {sortActivityCode}</p>
@@ -266,5 +367,4 @@ export default function GanttChart({ wcif, room, dispatch }) {
       </Item>
     </Container>
   );
-};
-
+}
