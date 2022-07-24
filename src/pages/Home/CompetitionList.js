@@ -18,8 +18,8 @@ export default function CompetitionList() {
   const wcaApiFetch = useWCAFetch();
   const [upcomingCompetitions, setUpcomingCompetitions] = useState([]);
   const [pastCompetitions, setPastCompetitions] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [, setLoading] = useState(true);
+  const [, setError] = useState(null);
     
   const getUpcomingManageableCompetitions = useCallback(() => {
     const oneWeekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);

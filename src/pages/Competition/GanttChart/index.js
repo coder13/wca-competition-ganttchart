@@ -2,19 +2,12 @@ import React, { useState, useMemo } from "react";
 import {
   acceptedRegistration,
   sortByDate,
-  unique,
   parseActivityCode,
 } from "../../../lib/utils";
 import AssignmentCell from "./AssignmentCell";
 import AssignmentPicker from "./AssignmentPicker";
 import { Container, Item } from "../../../components/Grid";
-
-const AssignmentTypeSortOrder = {
-  competitor: 1,
-  "staff-scrambler": 2,
-  "staff-judge": 3,
-  "staff-runner": 4,
-};
+import { sortByActivityCode } from "../../../lib/sortUtil";
 
 export const flatten = (arr) => arr.reduce((xs, x) => xs.concat(x), []);
 
@@ -43,6 +36,7 @@ const findAssignmentByActivityCode = (assignments, activityCode) => {
 
 export default function GanttChart({ wcif, room, dispatch }) {
   const [sortActivityCode, setSortActivityCode] = useState(wcif.events[0].id);
+  const [sortType, setSortType] = useState('group');
   const [assignmentPickerValue, setAssignmentPickerValue] =
     useState("competitor");
 
@@ -61,19 +55,6 @@ export default function GanttChart({ wcif, room, dispatch }) {
         .map((activity) => activity.childActivities)
         .reduce((acc, activity) => acc.concat(activity)),
     [room]
-  );
-
-  const firstRoundGroupActivities = useMemo(
-    () =>
-      roundActivities
-        .sort(sortByDate)
-        .filter(
-          ({ activityCode }) =>
-            parseActivityCode(activityCode).roundNumber === 1
-        )
-        .map((activity) => activity.childActivities)
-        .reduce((acc, activity) => acc.concat(activity)),
-    [roundActivities]
   );
 
   const persons = useMemo(
@@ -115,47 +96,9 @@ export default function GanttChart({ wcif, room, dispatch }) {
             return 1;
           }
 
-          const parsedSortActivityCode = parseActivityCode(sortActivityCode);
-
-          // sort by staff assignment type
-          if (parsedSortActivityCode.group) {
-            // Sort by job type for that specific group
-            const aAssignment = findAssignmentByActivityCode(
-              a.assignments,
-              sortActivityCode
-            );
-            const bAssignment = findAssignmentByActivityCode(
-              b.assignments,
-              sortActivityCode
-            );
-
-            const diff =
-              AssignmentTypeSortOrder[aAssignment.assignmentCode] -
-              AssignmentTypeSortOrder[bAssignment.assignmentCode];
-            return diff;
-          } else {
-            // sort by which group they are competing in
-            const aAssignment = findAssignmentByActivityCode(
-              a.assignments.filter(
-                ({ assignmentCode }) => assignmentCode === "competitor"
-              ),
-              sortActivityCode
-            );
-            const bAssignment = findAssignmentByActivityCode(
-              b.assignments.filter(
-                ({ assignmentCode }) => assignmentCode === "competitor"
-              ),
-              sortActivityCode
-            );
-
-            const diff =
-              (aAssignment?.parsedActivityCode?.group || 0) -
-              (bAssignment?.parsedActivityCode?.group || 0);
-
-            return diff;
-          }
+          return sortByActivityCode(sortActivityCode, sortType)(a,b);
         }),
-    [wcif.persons, sortActivityCode, allChildActivities]
+    [wcif.persons, allChildActivities, sortActivityCode, sortType]
   );
 
   const handleAssignmentChange = (person, activity) => {
@@ -214,13 +157,11 @@ export default function GanttChart({ wcif, room, dispatch }) {
           >
             <tr>
               <th></th>
-              {activitiesToShow.map((activity) => {
-                const { eventId } = parseActivityCode(activity.activityCode);
-
+              {activitiesToShow.map(({activityCode, childActivities}) => {
                 return (
                   <th
-                    key={activity.activityCode}
-                    colSpan={activity.childActivities?.length}
+                    key={activityCode}
+                    colSpan={childActivities?.length}
                     style={{
                       height: "1em",
                       padding: 0,
@@ -234,18 +175,12 @@ export default function GanttChart({ wcif, room, dispatch }) {
                         height: "100%",
                         justifyContent: "center",
                         backgroundColor:
-                          activity.activityCode === sortActivityCode &&
+                          activityCode === sortActivityCode &&
                           "#D6DBDF",
                       }}
-                      onClick={() => {
-                        if (activity.activityCode === sortActivityCode) {
-                          setSortActivityCode(null);
-                        } else {
-                          setSortActivityCode(activity.activityCode);
-                        }
-                      }}
+                      onClick={() => setSortActivityCode(activityCode === sortActivityCode ? null : activityCode)}
                     >
-                      {activity.activityCode}
+                      {activityCode}
                     </button>
                   </th>
                 );
@@ -353,6 +288,10 @@ export default function GanttChart({ wcif, room, dispatch }) {
         <Item column>
           <p>Info Panel</p>
           <p>Chosen Sort Activity Code: {sortActivityCode}</p>
+          <select onChange={(e) => setSortType(e.target.value)} value={sortType}>
+            <option value="group">Group</option>
+            <option value="time">Time</option>
+          </select>
           <p>People: {persons.length}</p>
           <p>Scramblers: {2}</p>
         </Item>

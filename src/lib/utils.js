@@ -1,4 +1,4 @@
-export const acceptedRegistration = ({ registration }) => registration.status === 'accepted';
+export const acceptedRegistration = ({ registration }) => registration?.status === 'accepted';
 export const sortByDate = (a, b) => new Date(a.startTime) - new Date(b.startTime);
 export const byWorldRanking = (eventId) => (a, b) => {
   if (!eventId) {
@@ -27,3 +27,26 @@ export const parseActivityCode = (activityCode) => {
     group: +split.find((i) => i.startsWith('g'))?.substring(1, 2),
   }
 }
+
+export const findAssignmentByActivityCode = (assignments, activityCode) => {
+  const parsedFilterActivityCode = parseActivityCode(activityCode);
+
+  return assignments.find((assignment) => {
+    if (!assignment.parsedActivityCode) {
+      return null;
+    }
+
+    const parsedActivityCode = assignment.parsedActivityCode;
+    const groupMatches = parsedFilterActivityCode.group
+      ? parsedActivityCode.group === parsedFilterActivityCode.group
+      : true;
+    const roundMatches = parsedFilterActivityCode.roundNumber
+      ? parsedActivityCode.roundNumber === parsedFilterActivityCode.roundNumber
+      : true;
+
+    const eventIdMatches =
+      parsedActivityCode.eventId === parsedFilterActivityCode.eventId;
+
+    return groupMatches && roundMatches && eventIdMatches;
+  });
+};

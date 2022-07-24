@@ -101,7 +101,7 @@ export default function AuthProvider({ children }) {
         },
       })
     }
-  }, [location]);
+  }, [location, navigate]);
 
   useEffect(() => () => {
     signOutIfExpired();
