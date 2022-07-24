@@ -40,7 +40,7 @@ export default function GanttChart({ wcif, room, dispatch }) {
   const [assignmentPickerValue, setAssignmentPickerValue] =
     useState("competitor");
 
-  const roundActivities = useMemo(
+    const roundActivities = useMemo(
     () =>
       room.activities.filter(
         ({ activityCode }) => activityCode.indexOf("other") === -1
@@ -138,6 +138,26 @@ export default function GanttChart({ wcif, room, dispatch }) {
       ),
     [activitiesToShow]
   );
+
+  const countCompetitorsByAssignment = useMemo(() => {
+    const counts = {};
+    persons.forEach((person) => {
+      person.assignments.forEach((assignment) => {
+        const activity = allChildActivities.find((child) => child.id === assignment.activityId);
+        if (!activity || sortActivityCode !== activity.activityCode) {
+          return;
+        }
+
+        if (!counts[assignment.assignmentCode]) {
+          counts[assignment.assignmentCode] = 0;
+        }
+
+        counts[assignment.assignmentCode] += 1;
+      });
+    }
+    );
+    return counts;
+  }, [allChildActivities, persons, sortActivityCode])
 
   return (
     <Container>
@@ -293,7 +313,10 @@ export default function GanttChart({ wcif, room, dispatch }) {
             <option value="time">Time</option>
           </select>
           <p>People: {persons.length}</p>
-          <p>Scramblers: {2}</p>
+          <p>Competitors: {countCompetitorsByAssignment.competitor}</p>
+          <p>Scramblers: {countCompetitorsByAssignment['staff-scrambler']}</p>
+          <p>Judges: {countCompetitorsByAssignment['staff-judge']}</p>
+          <p>Runners: {countCompetitorsByAssignment['staff-runner']}</p>
         </Item>
         <Item column>
           <p>Assignment Painter</p>
