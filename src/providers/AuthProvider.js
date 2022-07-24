@@ -34,6 +34,7 @@ export default function AuthProvider({ children }) {
   }, [expirationTime]);
 
   const signIn = () => {
+    setLocalStorage('redirectUrl', location.pathname);
     const params = new URLSearchParams({
       client_id: WCA_OAUTH_CLIENT_ID,
       response_type: 'token',
@@ -95,11 +96,12 @@ export default function AuthProvider({ children }) {
     if (hashParams.has('access_token')) {
       navigate({
         to: {
-          replace: '/',
+          replace: getLocalStorage('redirectUrl') || '/',
           hash: null,
           state: location.state,
         },
-      })
+      });
+      setLocalStorage('redirectUrl', null);
     }
   }, [location, navigate]);
 

@@ -3,7 +3,8 @@ import { WCA_ORIGIN } from '../lib/wca-env';
 import { useAuth } from '../providers/AuthProvider';
 
 export default function useWCAFetch() {
-  const { accessToken } = useAuth();
+  const { accessToken, signIn } = useAuth();
+
   return useCallback((path, fetchOptions = {}) => {
     const baseApiUrl = `${WCA_ORIGIN}/api/v0`;
   
@@ -17,9 +18,17 @@ export default function useWCAFetch() {
           'Content-Type': 'application/json',
         }),
       })
-    ).then(response => {
-      if (!response.ok) throw new Error(response.statusText);
+    ).then((response) => {
+      if (response.status === 401) {
+        signIn();
+        // return;
+      }
+
+      if (!response.ok) {
+        throw new Error(response.statusText);
+      }
+
       return response;
     }).then(response => response.json());
-  }, [accessToken]);
+  }, [accessToken, signIn]);
 }

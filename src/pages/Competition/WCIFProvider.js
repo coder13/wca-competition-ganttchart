@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, useReducer, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import useWCAFetch from '../../hooks/useWCAFetch';
 
 const INITIAL_STATE = {
@@ -61,7 +62,6 @@ export default function WCIFProvider({ competitionId, children }) {
       });
       setFetching(false);
     } catch (e) {
-      console.error(e);
       setError(e);
       setFetching(false);
     }
@@ -69,25 +69,38 @@ export default function WCIFProvider({ competitionId, children }) {
 
   const uploadChanges = useCallback(async () => {
     try {
-      const res = wcaApiFetch(`/competitions/${competitionId}/wcif`, {
+      wcaApiFetch(`/competitions/${competitionId}/wcif`, {
         method: 'PATCH',
         body: JSON.stringify({
           persons: wcif.persons,
         }),
       });
-      console.log(res);
     } catch (e) {
       console.error(e);
       setError(e);
       setFetching(false);
     }
-  }, [competitionId, wcif, wcaApiFetch]);
+  }, [wcaApiFetch, competitionId, wcif.persons]);
 
   useEffect(() => {
     fetchCompetition();
   }, [fetchCompetition]);
 
-  return <WCIFContext.Provider value={{ wcif, fetchCompetition, uploadChanges, error, dispatch }}>{(fetching && !error) ? 'Loading...' : children}</WCIFContext.Provider>
+  return (
+    <WCIFContext.Provider value={{ wcif, fetchCompetition, uploadChanges, error, dispatch }}>
+      {fetching && 'Loading...'}
+      {error && (
+        <div style={{
+          padding: '1em'
+        }}>
+          <h3>Error</h3>
+          <p>{error.message}</p>
+          <Link to="/">Go back</Link>
+        </div>
+      )}
+      {!fetching && !error && wcif.id ? children : null}
+    </WCIFContext.Provider>
+  )
 }
 
 export const useWCIF = () => useContext(WCIFContext);

@@ -13,7 +13,6 @@ export const sortByTime = (sortActivityCode) => (a,b) => {
   const aPRs = a.personalBests.filter((i) => i.eventId === eventId);
   const bPRs = b.personalBests.filter((i) => i.eventId === eventId);
 
-  console.log(aPRs, bPRs);
   if (!aPRs.length && !bPRs.length) {
     return a.name.localeCompare(b.name);
   }
